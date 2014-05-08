@@ -17,8 +17,8 @@ var isAuthenticatedMiddleware = require('./middlewares/isAuthenticated');*/
 var notFoundMiddleware = require('./middlewares/notFoundHandler');
 var genericErrorHandlerMiddleware = require('./middlewares/genericErrorHandler');
 
-var globals = require('./global');
-var config = require('./local');
+var GlobalAttributesProvider = require('./providers/GlobalAttributesProvider');
+var ConfigurationProvider = require('./providers/ConfigurationProvider');
 
 function initApp() {
 
@@ -36,7 +36,7 @@ function initApp() {
     app.use('/', genericErrorHandlerMiddleware);
     var server = http.createServer(app).listen(3000);
 
-    var io = globals.io = ioModule.listen(server, { log: 1000 });
+    var io = GlobalAttributesProvider.io = ioModule.listen(server, { log: 1000 });
 
     io.sockets.on('connection', function (socket) {
         socket.broadcast.emit('user connected');
@@ -45,8 +45,6 @@ function initApp() {
 
         socket.on('/messages/findAll', messageSocket.findAllMessages);
         socket.on('/messages/create', messageSocket.createMessage);
-
-
 
     });
 
