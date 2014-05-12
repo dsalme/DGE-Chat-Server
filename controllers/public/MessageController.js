@@ -22,10 +22,10 @@ PublicInterface.createMessage = function (data, callback) {
     if (!data || !data.author || !data.content) return callback(ErrorProvider.getMissingParametersError());
     Message.create(data, function (err, doc) {
         if (err) return callback(ErrorProvider.getDatabaseError());
-        GlobalAttributesProvider.io.sockets.emit('newMessage', {author: data.author, content: data.content});
-        console.log('recieved message from', data.author, 'msg', JSON.stringify(data.content));
+        GlobalAttributesProvider.io.sockets.emit('newMessage', {author: doc.author, content: doc.content, createdAt: doc.createdAt});
+        console.log('recieved message from', doc.author, 'msg', JSON.stringify(doc.content));
         console.log('broadcasting message');
-        console.log('payload is', data.content);
+        console.log('payload is', doc.content);
         console.log('broadcast complete');
         return callback(false, doc);
     });
