@@ -5,14 +5,18 @@ var express = require('express');
 var router = express.Router();
 
 var MessageController = require('./../../controllers/public/MessageController');
-var globals = require('./../../global');
+var ResponseHandlerProvider = require('./../../providers/ResponseHandlerProvider');
 
 router.get('/', function(req, res, next){
-   MessageController.findAllMessages(req.body, globals.defaultHttpResponseHandler(res, next));
+   MessageController.findAllMessages(req.body, ResponseHandlerProvider.defaultHttpResponseHandler(res, next));
 });
 
-router.post('/', function(req, res, next){
-    MessageController.createMessage(req.body, globals.defaultHttpResponseHandler(res, next));
+router.put('/', function(req, res, next){
+    MessageController.createMessage(req.body, ResponseHandlerProvider.defaultHttpResponseHandler(res, next));
+});
+
+router.put('/likeMessage', function(req, res, next){
+    MessageController.reverseLikeMessage(req.body, ResponseHandlerProvider.defaultHttpResponseHandler(res, next));
 });
 
 module.exports = router;

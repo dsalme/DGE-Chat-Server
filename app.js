@@ -18,7 +18,7 @@ var notFoundMiddleware = require('./middlewares/notFoundHandler');
 var genericErrorHandlerMiddleware = require('./middlewares/genericErrorHandler');
 
 var GlobalAttributesProvider = require('./providers/GlobalAttributesProvider');
-var ConfigurationProvider = require('./providers/ConfigurationProvider');
+//var ConfigurationProvider = require('./providers/ConfigurationProvider');
 
 function initApp() {
 
@@ -39,12 +39,14 @@ function initApp() {
     var io = GlobalAttributesProvider.io = ioModule.listen(server, { log: 1000 });
 
     io.sockets.on('connection', function (socket) {
+        console.log("user connected: "+ socket.id);
         socket.broadcast.emit('user connected');
 
         var messageSocket = require('./sockets/messageSocket');
 
         socket.on('/messages/findAll', messageSocket.findAllMessages);
         socket.on('/messages/create', messageSocket.createMessage);
+        socket.on('/messages/likeMessage', messageSocket.reverseLikeMessage);
 
     });
 

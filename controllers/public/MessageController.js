@@ -4,61 +4,58 @@
 "use strict";
 
 var Message = require("./../../models/Message");
-var globals = require("./../../global");
+var GlobalAttributesProvider = require("./../../providers/GlobalAttributesProvider");
+var ErrorProvider = require('./../../providers/ErrorProvider');
 
-var PublicInterface = {
-    findAllMessages: function (data, callback) {
-        Message.find({}, function (err, doc) {
-            callback(err, doc);
+
+var PublicInterface = {};
+PublicInterface.findAllMessages = function (data, callback) {
+    Message.find({},
+        'author content likes createdAt',
+        function (err, doc) {
+            if (err) return callback(ErrorProvider.getDatabaseError());
+            return callback(false, doc);
         })
-    },
-    createMessage: function (data, callback) {
-        //TODO: Notificar via sockets a todos los conectados
-        if (data.author && data.content) {
-            Message.create(data, function (err, doc) {
-                if (!err) {
-                    //TODO: Verificar que funcione y optimizar para no floodear a clientes
-                    globals.io.sockets.emit('newMessage', {author: data.author, content: data.content});
-                    console.log('recieved message from', data.author, 'msg', JSON.stringify(data.content));
+};
+PublicInterface.createMessage = function (data, callback) {
+    //TODO: Notificar via sockets a todos los conectados +
+    if (!data || !data.author || !data.content) return callback(ErrorProvider.getMissingParametersError());
+    Message.create(data, function (err, doc) {
+        if (err) return callback(ErrorProvider.getDatabaseError());
+        GlobalAttributesProvider.io.sockets.emit('newMessage', {author: data.author, content: data.content});
+        console.log('recieved message from', data.author, 'msg', JSON.stringify(data.content));
+        console.log('broadcasting message');
+        console.log('payload is', data.content);
+        console.log('broadcast complete');
+        return callback(false, doc);
+    });
+};
 
-                    console.log('broadcasting message');
-                    console.log('payload is', data.content);
-
-                    console.log('broadcast complete');
-                    callback(err, doc);
+PublicInterface.reverseLikeMessage = function (data, callback) {
+    if (!data || !data.author || !data._id) return callback(ErrorProvider.getMissingParametersError());
+    Message.findOne({_id: data._id}, function (err, message) {
+        if (err) return callback(ErrorProvider.getDatabaseError());
+        if (message.likes.length > 0) {
+            var igual = false;
+            for (var i = 0; i < message.likes.length; i++) {
+                if (message.likes[i].author == data.author) {
+                    message.likes.splice(i, 1);
+                    i = message.likes.length;
+                    igual = true;
                 }
-            });
+            }
+            if (!igual) {
+                message.likes.push({author: data.author});
+            }
         } else {
-            return callback(true)
+            message.likes.push({author: data.author});
         }
-    }/*,
-    findMessagesByDate: function(){
-        Message.find({createdAt: Date.now()}, function(err, doc){
-
-        })
-    }*/
-
-
-/*,
- comment: function (data, callback) {
- if (data.id && data.author && data.content) {
- Post.findOne({ _id: data.id, active: true },
- 'title author content cover tags comments createdAt modifiedAt',
- function (err, doc) {
- if (!err) {
- doc.comments.push({ author: data.author, content: data.content });
- doc.save(function (err, doc) {
- if(!err){
- //TODO: Verificar que funcione y optimizar para no floodear a clientes
- globals.io.sockets.emit('new comment', {id: data.id, author: data.author, content: data.content});
- }
- return callback(!err);
- });
- } else return callback(true);
- }
- );
- } else return callback(true);
- }*/
+        message.save(function (err, doc) {
+            if (err) return callback(ErrorProvider.getDatabaseError());
+            GlobalAttributesProvider.io.sockets.emit('someOneLikesAMessage', {message: message, author: data.author});
+            return callback(false, doc);
+        });
+    });
 };
 
 module.exports = PublicInterface;

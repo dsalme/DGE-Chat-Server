@@ -4,33 +4,25 @@
 "use strict";
 
 //var jwt = require('jsonwebtoken');
-var config = require('./../local');
+//var config = require('./../local');
 
 var MessageController = require('./../controllers/public/MessageController');
-var globals = require('./../global');
+var ResponseHandlerProvider = require('./../providers/ResponseHandlerProvider');
 
-var socketRouter = {
+var socketRouter = {};
 
-    findAllMessages: function (id, callback) {
-        MessageController.findAllMessages({}, globals.defaultSocketResponseHandler(callback));
-        console.log("Petición findAllMessages del socket " + socket.id);
-    },
-
-    //createMessage: function (data, callback) {
-    createMessage: function (data, callback) {
-        MessageController.createMessage({author: data.author, content: data.content}, globals.defaultSocketResponseHandler(callback));
-        console.log('recieved message from', data.author, 'msg', JSON.stringify(data.content));
-
-        console.log('broadcasting message');
-        console.log('payload is', data.content);
-
-        console.log('broadcast complete');
-
-    }
-
-    //
-
-
+socketRouter.findAllMessages = function (data, callback) {
+    MessageController.findAllMessages({}, ResponseHandlerProvider.defaultSocketResponseHandler(callback));
+    console.log("Petición findAllMessages del socket " + socket.id);
 };
+
+socketRouter.createMessage = function (data, callback) {
+    MessageController.createMessage(data, ResponseHandlerProvider.defaultSocketResponseHandler(callback));
+};
+
+socketRouter.reverseLikeMessage = function(data, callback){
+    MessageController.reverseLikeMessage(data, ResponseHandlerProvider.defaultSocketResponseHandler(callback));
+};
+
 
 module.exports = socketRouter;

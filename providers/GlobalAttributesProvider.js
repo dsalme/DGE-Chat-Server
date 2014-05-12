@@ -1,7 +1,7 @@
 "use strict";
 
-module.exports = {
+var GlobalAttributesProvider = {};
 
-    io: {}
+GlobalAttributesProvider.io = {};
 
-};
+module.exports = GlobalAttributesProvider;
