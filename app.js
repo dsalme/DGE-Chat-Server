@@ -1,62 +1,52 @@
 "use strict";
 
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/dgeChat');
-mongoose.connection.on('error', console.error.bind(console, 'connection error:'));
-mongoose.connection.once('open', initApp);
+var connection = mongoose.createConnection('mongodb://localhost/dgeChat');
+connection.on('error', console.error.bind(console, 'connection error:'));
+connection.once('open', initApp);
 
-var express = require('express');
-var ioModule = require('socket.io');
-var http = require('http');
-var https = require('https');
-var bodyParser = require('body-parser');
-var cors = require('cors');
-
-/*var httpRedirectMiddleware = require('./middlewares/httpRedirect');
-var isAuthenticatedMiddleware = require('./middlewares/isAuthenticated');*/
-var notFoundMiddleware = require('./middlewares/notFoundHandler');
-var genericErrorHandlerMiddleware = require('./middlewares/genericErrorHandler');
-
-var GlobalAttributesProvider = require('./providers/GlobalAttributesProvider');
-//var ConfigurationProvider = require('./providers/ConfigurationProvider');
+var MessageModel = connection.model('Message', require('./schemas/Message'), 'messages');
 
 function initApp() {
 
-    var app = express();
-    //app.use('/', httpRedirectMiddleware);
+    var express = require('express');
+    var ioModule = require('socket.io');
+    var http = require('http');
+    var https = require('https');
+    var bodyParser = require('body-parser');
+    var cors = require('cors');
+    var GlobalAttributesProvider = require('./providers/GlobalAttributesProvider');
 
+    var app = express();
     app.use('/', bodyParser());
     app.use('/', cors());
 
+    app.use('/messages', require('./routes/public/messageRouter')(MessageModel));
 
-    var publicMessageRouter = require('./routes/public/messageRouter');
-    app.use('/messages', publicMessageRouter);
-
-    app.use('/', notFoundMiddleware);
-    app.use('/', genericErrorHandlerMiddleware);
+    app.use('/', require('./middlewares/notFoundHandler'));
+    app.use('/', require('./middlewares/genericErrorHandler'));
     var server = http.createServer(app).listen(3000);
 
-    var io = GlobalAttributesProvider.io = ioModule.listen(server, { log: 1000 });
+    var io = GlobalAttributesProvider.io = ioModule.listen(server, { log: false });
 
+    var i = 0;
     io.sockets.on('connection', function (socket) {
-        console.log("user connected: "+ socket.id);
-        socket.broadcast.emit('user connected');
+        //console.log(socket.origin);
+        var messageSocket = require('./sockets/messageSocket')(MessageModel);
+        socket.emit('connected', {author: 'Server', content: 'Tu nick es anonimo'+i+'.', nickName:'anonimo'+i});
+        io.sockets.emit('newUser',{author: 'Server', content: 'El usuario anonimo'+i+' se ha conectado.'});
+        i++;
 
-        var messageSocket = require('./sockets/messageSocket');
-
-        socket.on('/messages/findAll', messageSocket.findAllMessages);
-        socket.on('/messages/create', messageSocket.createMessage);
+        socket.on('/messages/newMessage', messageSocket.newMessage);
         socket.on('/messages/likeMessage', messageSocket.reverseLikeMessage);
 
+        socket.on('/messages/findAll', messageSocket.findAllMessages);
+        socket.on('/messages/newNick', function(data, callback){
+            socket.broadcast.emit('newNick', {
+                author: 'Server',
+                content: "El usuario '" + data.author + "' se ha cambiado el nick a '" + data.content + "'."
+            });
+        });
     });
-
-    /*TODO
-    CAMBIAR LA LOGICA DEL GETTER PARA QUE AL CONECTARSE UNICAMENTE SE CONSULTEN LOS MENSAJES DEL DIA ACTUAL
-    -
-    PASAR A LAS RUTAS PRIVADAS EL GETTER DE TODOS LOS MENSAJES
-    -
-    TERMINAR DE DEFINIR BIEN LOS SOCKET ON Y EMIT DEL SERVER
-
-     */
 
 }
